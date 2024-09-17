@@ -1,0 +1,3 @@
+- https://www.strichliste.org/install/
+- https://github.com/strichliste/strichliste
+- https://wiki.nixos.org/wiki/PHP#OCI_image
