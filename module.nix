@@ -124,7 +124,7 @@ in {
         dependsOn = [ "strichliste-db" ];
 
         environment = {
-          # APP_ENV = "prod";
+          APP_ENV = "prod";
           DATABASE_URL = "mysql://strichliste:strichliste@127.0.0.1/strichliste";
         };
 
@@ -136,11 +136,7 @@ in {
             };
           in 
           [
-            # "${cfg.configFile}:/source/config/strichliste.yaml"
-            # "${src}/config/services.yaml:/source/config/strichliste.yaml"
-            # "${src}/config/doctrine.yaml:/source/config/packages/doctrine.yaml"
-
-            # "/var/log/strichliste:/var/"
+            "/mnt/data/configs/strichliste/var:/source/var"
           ];
 
 
@@ -155,10 +151,15 @@ in {
           MARIADB_PASSWORD = "strichliste";
           MARIADB_DATABASE = "strichliste";
           MARIADB_ROOT_PASSWORD = "root";
+          MARIADB_AUTO_UPGRADE = "true";
         };
 
+        volumes = [
+          "/mnt/data/configs/strichliste/db:/var/lib/mysql"
+        ];
+
         ports = [
-          "8123:80"
+          "8123:8080"
         ];
       };
     };
