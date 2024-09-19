@@ -10,7 +10,7 @@ let
 
     src = src;
 
-    unpackPhase = ":";
+    phases = [ "installPhase" ];
 
     installPhase = ''
       mkdir -p $out
@@ -55,8 +55,8 @@ in {
             };
 
             account.boundary = {
-              upper = 300;
-              lower = -100;
+              upper = 30000;
+              lower = -10000;
             };
 
             payment = {
@@ -67,8 +67,8 @@ in {
               };
 
               boundary = {
-                upper = 300;
-                lower = -200;
+                upper = 30000;
+                lower = -20000;
               };
 
               transaction.enabled = true;
@@ -118,8 +118,19 @@ in {
     virtualisation.oci-containers.containers = {
       "strichliste" = {
         imageFile = (import ./docker-image.nix { inherit pkgs config; });
+        # imageFile = pkgs.stdenv.mkDerivation {
+          # name = "docker-image";
+          # src = ./image.tar;
+
+          # phases = [ "installPhase" ];
+
+          # installPhase = ''
+            # cp $src $out            
+          # '';
+        # };
     
         image = "strichliste:latest";
+        # image = "ghcr.io/strichliste/strichliste-docker:master";
 
         dependsOn = [ "strichliste-db" ];
 

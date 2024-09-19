@@ -8,13 +8,16 @@ let
   # pkgRoot = "${app}/share/php/strichliste";
 
   pkgRoot = pkgs.stdenv.mkDerivation {
-    name = "source-strichliste";
-    # src = builtins.fetchurl {
+    name = "strichliste-source";
+    # srcs = builtins.fetchurl {
       # url = "https://github.com/strichliste/strichliste/releases/download/v1.8.2/strichliste-v1.8.2.tar.gz";
       # sha256 = "0p931wb5fvab1r8drd99cc1zl3gwaaxnic2brv13k64cxzxf85a6";
     # };
 
+    # sourceRoot = ".";
     src = ./tar-src;
+
+    # setSourceRoot = "sourceRoot=.";
 
     installPhase = ''
       mkdir -p $out
@@ -144,12 +147,18 @@ in pkgs.dockerTools.buildImage {
 
   created = "now";
 
+  # fromImage = pkgs.dockerTools.pullImage {
+    # imageName = "alpine";
+    # imageDigest = "sha256:3ddf7bf1d408188f9849efbf4f902720ae08f5131bb39013518b918aa056d0de";
+    # sha256 = "AnLSwi8iqaTRE2C8mcwwDK13Do962Zh/ej+bxbATxQ8=";
+  # };
+
   copyToRoot = pkgs.buildEnv {
     name = "image-root";
     paths = [
       start-script
       cfg.configFile
-      pkgs.php
+      pkgs.php81
       pkgs.nginx
       pkgs.fakeNss
       pkgs.bash
@@ -179,6 +188,7 @@ in pkgs.dockerTools.buildImage {
     cp -r ${pkgRoot}/* ${appRoot}
     
     cp -r ${cfg.configFile}/strichliste.yaml ${appRoot}/config/strichliste.yaml
+    # cp -r ${./conf/strichliste.yaml} ${appRoot}/config/strichliste.yaml
 
     cp ${./conf/doctrine.yaml} ${appRoot}/config/packages/doctrine.yaml
     cp ${./conf/services.yaml} ${appRoot}/config/services.yaml
