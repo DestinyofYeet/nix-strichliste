@@ -136,7 +136,7 @@ in {
 
         environment = {
           APP_ENV = "prod";
-          DATABASE_URL = "mysql://strichliste:strichliste@127.0.0.1/strichliste";
+          DATABASE_URL = "mysql://strichliste:strichliste@strichliste-db/strichliste";
         };
 
         volumes = 
@@ -151,7 +151,7 @@ in {
           ];
 
 
-        extraOptions = [ "--network=container:strichliste-db" ];
+        extraOptions = [ "--network=strichliste-network" ];
       };
 
       "strichliste-db" = {
@@ -162,8 +162,10 @@ in {
           MARIADB_PASSWORD = "strichliste";
           MARIADB_DATABASE = "strichliste";
           MARIADB_ROOT_PASSWORD = "root";
-          MARIADB_AUTO_UPGRADE = "true";
+          # MARIADB_AUTO_UPGRADE = "true";
         };
+
+        hostname = "strichliste-db";
 
         volumes = [
           "/mnt/data/configs/strichliste/db:/var/lib/mysql"
@@ -172,6 +174,18 @@ in {
         ports = [
           "8123:8080"
         ];
+
+        extraOptions = [ "--network=strichliste-network" ];
+      };
+    };
+
+    systemd.services.createStrichlisteNetwork = {
+      description = "Create strichliste docker network";
+      after = [ "docker.service" ];
+      serviceConfig = {
+        ExecStart = "${pkgs.docker}/bin/docker network create strichliste-network";
+        ExecStop = "${pkgs.docker}/bin/docker network rm strichliste-network";
+        Restart = "on-failure";
       };
     };
   };
