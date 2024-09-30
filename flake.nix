@@ -10,6 +10,8 @@
     pkgs = import nixpkgs { system = "x86_64-linux"; };
 
   in {
+
+    packages.x86_64-linux.strichliste = pkgs.callPackage ./pkg.nix {};
     nixosModules.strichliste = import ./module.nix self;
   };
 }
