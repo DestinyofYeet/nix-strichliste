@@ -40,6 +40,7 @@ let
 
     patches = [
       ./patches/makeBuildable.patch
+      ./patches/fix-doctrine.patch
       writeableDirsPath
       yamlPatch
     ];
