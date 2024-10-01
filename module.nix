@@ -3,6 +3,9 @@ self: { lib, config, pkgs, ... }:
 with lib;
 
 let
+  recursiveMerge = listOfAttrsets:
+    lib.fold (attrset: acc: lib.recursiveUpdate attrset acc) { } listOfAttrsets;
+
   cfg = config.services.strichliste;
 
   env-file = pkgs.substituteAll {
@@ -33,8 +36,88 @@ let
       mkdir -p $out
       cp -r $src/* $out
       cp -r ${env-file} $out/.env
-      cp -r ${cfg.configFile} $out
     '';
+  };
+
+  default-options = {
+    parameters.strichliste = {
+      article = {
+        enable = true;
+        autoOpen = false;
+      };
+
+      common.idleTimeout = 30000;
+
+      paypal = {
+        enable = false;
+        recipient = "foo@bar.de";
+        fee = 0;
+      };
+
+      user.stalePeriod = "240 day";
+
+      i18n = {
+        dateFormat = "DD-MM-YYYY HH:mm:ss";
+        timezone = "Europe/Berlin";
+        language = "de";
+
+        currency = {
+          name = "Euro";
+          symbol = "€";
+          alpha3 = "EUR";
+        };
+      };
+
+      account.boundary = {
+        upper = 30000;
+        lower = -10000;
+      };
+
+      payment = {
+        undo = {
+          enable = true;
+          delete = false;
+          timeout = "5 minute";
+        };
+
+        boundary = {
+          upper = 30000;
+          lower = -20000;
+        };
+
+        transaction.enabled = true;
+      
+        splitInvoice.enabled = true;
+
+        deposit = {
+          enabled = true;
+          custom = true;
+          steps = [
+            5
+            10
+            15
+            20
+            25
+            50
+            100
+          ];
+        };
+
+        dispense = {
+          enable = true;
+          custom = true;
+          steps = [
+            5
+            10
+            15
+            20
+            25
+            50
+            100
+          ];
+        };
+      };
+    };  
   };
 in {
   options = {
@@ -95,91 +178,12 @@ in {
       configuration = mkOption {
         type = types.attrs;
         description = "See 'https://github.com/strichliste/strichliste-backend/blob/master/docs/Config.md' for details";
-        default = {
-          parameters.strichliste = {
-            article = {
-              enable = true;
-              autoOpen = false;
-            };
-
-            common.idleTimeout = 30000;
-
-            paypal = {
-              enable = false;
-              recipient = "foo@bar.de";
-              fee = 0;
-            };
-
-            user.stalePeriod = "240 day";
-
-            i18n = {
-              dateFormat = "DD-MM-YYYY HH:mm:ss";
-              timezone = "Europe/Berlin";
-              language = "de";
-
-              currency = {
-                name = "Euro";
-                symbol = "€";
-                alpha3 = "EUR";
-              };
-            };
-
-            account.boundary = {
-              upper = 30000;
-              lower = -10000;
-            };
-
-            payment = {
-              undo = {
-                enable = true;
-                delete = false;
-                timeout = "5 minute";
-              };
-
-              boundary = {
-                upper = 30000;
-                lower = -20000;
-              };
-
-              transaction.enabled = true;
-              
-              splitInvoice.enabled = true;
-
-              deposit = {
-                enabled = true;
-                custom = true;
-                steps = [
-                  5
-                  10
-                  15
-                  20
-                  25
-                  50
-                  100
-                ];
-              };
-
-              dispense = {
-                enable = true;
-                custom = true;
-                steps = [
-                  5
-                  10
-                  15
-                  20
-                  25
-                  50
-                  100
-                ];
-              };
-            };
-          };  
-        };
+        default = default-options;
       };
 
       configFile = mkOption {
         type = types.package;
-        default = ( pkgs.formats.yaml {} ).generate "strichliste.yaml" cfg.configuration;        
+        default = ( pkgs.formats.yaml {} ).generate "strichliste.yaml" (recursiveMerge [ default-options cfg.configuration ]);
       };
     };
   };
@@ -224,6 +228,12 @@ in {
           #   return = 404;
           # };
         };
+
+        extraConfig = ''
+          location ~ \.php$ {
+            return 404;
+          }
+        '';
       };      
     };
 

@@ -41,7 +41,7 @@ let
     patches = [
       ./patches/makeBuildable.patch
       ./patches/fix-doctrine.patch
-      ./patches/js-fix.patch
+      # ./patches/js-fix.patch
       writeableDirsPath
       yamlPatch
     ];
