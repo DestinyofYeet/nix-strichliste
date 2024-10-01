@@ -5,23 +5,36 @@ with lib;
 let
   cfg = config.services.strichliste;
 
-  putInDir = src: outname: pkgs.stdenv.mkDerivation {
-    name = "Put in dir";
-
-    src = src;
-
-    phases = [ "installPhase" ];
-
-    installPhase = ''
-      mkdir -p $out
-      cp ${src} $out/${outname}
-    '';
-  };
-
   env-file = pkgs.substituteAll {
     src = ./conf/env.env;
 
     databaseUrl = cfg.databaseUrl;
+  };
+
+  moveFilesDerivation = pkgs.stdenv.mkDerivation {
+    name = "wrap-env-file";
+
+    src = pkgs.callPackage ./pkg.nix {
+      inherit pkgs cfg;
+    };
+  
+    installPhase = ''
+      mkdir -p $out
+      cp -r $src/share/php/strichliste/* $out
+    '';
+  };
+
+  patchDerivation = pkgs.stdenv.mkDerivation {
+    name = "patchsource";
+
+    src = moveFilesDerivation;
+
+    installPhase = ''
+      mkdir -p $out
+      cp -r $src/* $out
+      cp -r ${env-file} $out/.env
+      cp -r ${cfg.configFile} $out
+    '';
   };
 in {
   options = {
@@ -30,22 +43,23 @@ in {
 
       package = mkOption {
         type = types.package;
-        default = pkgs.stdenv.mkDerivation {
-          name = "wrap-env-file";
-
-          src = pkgs.callPackage ./pkg.nix {};
-        
-          installPhase = ''
-            mkdir -p $out
-            cp -r $src/share/php/strichliste/* $out
-
-            cp -r ${env-file} $out/.env
-          '';
-          };
+        default = patchDerivation;
       };
 
       databaseUrl = mkOption {
         type = types.str;
+      };
+
+      cacheDir = mkOption {
+        type = types.str;
+        description = "Needs to be writable by ${cfg.phpfpmSettings.user}";
+        default = "/var/lib/strichliste/cache";
+      };
+
+      logDir = mkOption {
+        type = types.str;
+        description = "Needs to be writable by ${cfg.phpfpmSettings.user}";
+        default = "/var/lib/strichliste/log";
       };
 
       nginxSettings = {
@@ -165,7 +179,7 @@ in {
 
       configFile = mkOption {
         type = types.package;
-        default = putInDir (( pkgs.formats.yaml {} ).generate "strichliste.yaml" cfg.configuration) "strichliste.yaml";        
+        default = ( pkgs.formats.yaml {} ).generate "strichliste.yaml" cfg.configuration;        
       };
     };
   };

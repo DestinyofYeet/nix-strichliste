@@ -1,0 +1,13 @@
+diff --git a/config/services.yaml b/config/services.yaml
+index 46e4c3d..d40fe8e 100644
+--- a/config/services.yaml
++++ b/config/services.yaml
+@@ -2,7 +2,7 @@
+ # Files in the packages/ subdirectory configure your dependencies.
+ 
+ imports:
+-    - { resource: '/source/strichliste.yaml' }
++    - { resource: '@strichliste@' }
+ 
+ # Put parameters here that don't need to change on each machine where the app is deployed
+ # https://symfony.com/doc/current/best_practices/configuration.html#application-related-configuration

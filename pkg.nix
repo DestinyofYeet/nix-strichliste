@@ -1,11 +1,25 @@
 {
   pkgs ? import <nixpkgs> {},
+  cfg,
   ...
 }:
 
 let 
   version = "1.8.2";
   php = pkgs.php81;
+
+  yamlPatch = pkgs.substituteAll {
+    src = ./patches/strichlisteYaml.patch;
+
+    strichliste = cfg.configFile;
+  };
+
+  writeableDirsPath = pkgs.substituteAll {
+    src = ./patches/makeDirectoriesWriteable.patch;
+
+    cacheDir = cfg.cacheDir;
+    logDir = cfg.logDir;
+  };
 
   app-src = pkgs.stdenv.mkDerivation {
     pname = "Strichliste-${version}-source";
@@ -26,6 +40,8 @@ let
 
     patches = [
       ./patches/makeBuildable.patch
+      writeableDirsPath
+      yamlPatch
     ];
   };
 in 

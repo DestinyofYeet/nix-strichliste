@@ -1,0 +1,19 @@
+diff --git a/src/Kernel.php b/src/Kernel.php
+index eb8df0d..5ba6b5a 100644
+--- a/src/Kernel.php
++++ b/src/Kernel.php
+@@ -17,12 +17,12 @@ class Kernel extends BaseKernel
+ 
+     public function getCacheDir(): string
+     {
+-        return $this->getProjectDir().'/var/cache/'.$this->environment;
++        return "@cacheDir@";
+     }
+ 
+     public function getLogDir(): string
+     {
+-        return $this->getProjectDir().'/var/log';
++        return "@logDir@";
+     }
+ 
+     public function registerBundles(): iterable
