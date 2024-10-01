@@ -17,6 +17,12 @@ let
       cp ${src} $out/${outname}
     '';
   };
+
+  env-file = pkgs.substituteAll {
+    src = ./conf/env.env;
+
+    databaseUrl = cfg.databaseUrl;
+  };
 in {
   options = {
     services.strichliste = {
@@ -24,7 +30,18 @@ in {
 
       package = mkOption {
         type = types.package;
-        default = self.packages.x86_64-linux.strichliste;
+        default = pkgs.stdenv.mkDerivation {
+          name = "wrap-env-file";
+
+          src = pkgs.callPackage ./pkg.nix {};
+        
+          installPhase = ''
+            mkdir -p $out
+            cp -r $src/share/php/strichliste/* $out
+
+            cp -r ${env-file} $out/.env
+          '';
+          };
       };
 
       databaseUrl = mkOption {
@@ -40,6 +57,12 @@ in {
         domain = mkOption {
           type = types.str;
           description = "The domain that nginx should listen on";
+        };
+
+        listenAddress = mkOption {
+          type = types.listOf types.str;
+          description = "The address nginx should listen on";
+          default = [ "0.0.0.0" ];
         };
       };
 
@@ -147,13 +170,12 @@ in {
     };
   };
 
-  config = let 
-    strichliste-root = "${cfg.package}/share/php/strichliste";
-  in mkIf cfg.enable {
+  config = mkIf cfg.enable {
 
     services.nginx.virtualHosts = mkIf cfg.nginxSettings.configure {
       ${cfg.nginxSettings.domain} = {
-        root = "${strichliste-root}/public";
+        listenAddresses = cfg.nginxSettings.listenAddress;
+        root = "${cfg.package}/public";
         locations = {
 
           "/" = {
@@ -173,7 +195,8 @@ in {
             extraConfig = ''
               fastcgi_split_path_info ^(.+\.php)(/.*)$;
 
-              fastcgi_pass unix:${config.services.phpfpm.pools.strichliste.socket};
+              # fastcgi_pass unix:${config.services.phpfpm.pools.strichliste.socket};
+              fastcgi_pass 127.0.0.1:9000;
               fastcgi_intercept_errors on;
               fastcgi_request_buffering off;
 
@@ -183,9 +206,9 @@ in {
             '';
           };
 
-          "~ \\.php$" = {
-            return = 404;
-          };
+          # "~ \\.php$" = {
+          #   return = 404;
+          # };
         };
       };      
     };
@@ -194,7 +217,9 @@ in {
       user = cfg.phpfpmSettings.user;
 
       settings = {
+        "listen" = "127.0.0.1:9000";
         "listen.owner" = config.services.nginx.user;
+        "listen.mode" = "0600";
         "pm" = "dynamic";
         "pm.max_children" = 32;
         "pm.max_requests" = 500;
