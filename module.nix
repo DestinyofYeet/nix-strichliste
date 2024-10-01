@@ -4,23 +4,14 @@ with lib;
 
 let
   cfg = config.services.strichliste;
-
-  putInDir = src: outname: pkgs.stdenv.mkDerivation {
-    name = "Put in dir";
-
-    src = src;
-
-    phases = [ "installPhase" ];
-
-    installPhase = ''
-      mkdir -p $out
-      cp ${src} $out/${outname}
-    '';
-  };
 in {
   options = {
     services.strichliste = {
       enable = mkEnableOption "enable the strichliste";
+
+      databaseUrl = mkOption {
+        type = types.str;
+      };
 
       configuration = mkOption {
         type = types.attrs;
@@ -109,74 +100,112 @@ in {
 
       configFile = mkOption {
         type = types.package;
-        default = putInDir (( pkgs.formats.yaml {} ).generate "strichliste.yaml" cfg.configuration) "strichliste.yaml";        
+        default = ( pkgs.formats.yaml {} ).generate "strichliste.yaml" cfg.configuration;
       };
     };
   };
 
   config = mkIf cfg.enable {
-    virtualisation.oci-containers.containers = {
-      "strichliste" = {
-        imageFile = (import ./docker-image.nix { inherit pkgs config; });
-        # imageFile = pkgs.stdenv.mkDerivation {
-          # name = "docker-image";
-          # src = ./image.tar;
 
-          # phases = [ "installPhase" ];
+    virtualisation.oci-containers.backend = "podman";
 
-          # installPhase = ''
-            # cp $src $out            
-          # '';
-        # };
-    
-        image = "strichliste:latest";
-        # image = "ghcr.io/strichliste/strichliste-docker:master";
-
-        dependsOn = [ "strichliste-db" ];
-
-        environment = {
-          APP_ENV = "prod";
-          DATABASE_URL = "mysql://strichliste:strichliste@127.0.0.1/strichliste";
-        };
-
-        volumes = 
-          let
-            src = builtins.fetchGit {
-              url = "https://github.com/strichliste/strichliste-docker";
-              rev = "abd94fcaf14cc13c08307f16b97cb2255a4ade50";
-            };
-          in 
-          [
-            "/mnt/data/configs/strichliste/var:/source/var"
-          ];
-
-
-        extraOptions = [ "--network=container:strichliste-db" ];
+    # Containers
+    virtualisation.oci-containers.containers."strichliste" = {
+      image = "fsim/strichliste-docker:latest";
+      environment = {
+        "APP_ENV" = "prod";
+        "DATABASE_URL" = "mysql://strichliste:strichliste@strichliste-db/strichliste";
+        "DB_HOST" = "strichliste-db";
       };
-
-      "strichliste-db" = {
-        image = "mariadb:10.11.5";
-
-        environment = {
-          MARIADB_USER = "strichliste";
-          MARIADB_PASSWORD = "strichliste";
-          MARIADB_DATABASE = "strichliste";
-          MARIADB_ROOT_PASSWORD = "root";
-          MARIADB_AUTO_UPGRADE = "true";
-        };
-
-        volumes = [
-          "/mnt/data/configs/strichliste/db:/var/lib/mysql"
-        ];
-
-        ports = [
-          "8123:8080"
-        ];
+      volumes = [
+        "${./conf/doctrine.yaml}:/source/config/packages/doctrine.yaml:rw"
+        "${./conf/services.yaml}:/source/config/services.yaml:rw"
+        "${cfg.configFile}:/source/config/strichliste.yaml:rw"
+      ];
+      ports = [
+        "8080:8080/tcp"
+      ];
+      log-driver = "journald";
+      extraOptions = [
+        "--network-alias=strichliste"
+        "--network=strichliste_default"
+      ];
+    };
+    systemd.services."podman-strichliste" = {
+      serviceConfig = {
+        Restart = lib.mkOverride 500 "no";
       };
+      after = [
+        "podman-network-strichliste_default.service"
+      ];
+      requires = [
+        "podman-network-strichliste_default.service"
+      ];
+      partOf = [
+        "podman-compose-strichliste-root.target"
+      ];
+      wantedBy = [
+        "podman-compose-strichliste-root.target"
+      ];
+    };
+    virtualisation.oci-containers.containers."strichliste-db" = {
+      image = "mariadb:10.11.5";
+      environment = {
+        "MYSQL_DATABASE" = "strichliste";
+        "MYSQL_PASSWORD" = "strichliste";
+        "MYSQL_ROOT_PASSWORD" = "root";
+        "MYSQL_USER" = "strichliste";
+      };
+      volumes = [
+        "/home/ole/github/strichliste-docker/data/mysql:/var/lib/mysql:rw"
+      ];
+      log-driver = "journald";
+      extraOptions = [
+        "--network-alias=strichliste-db"
+        "--network=strichliste_default"
+      ];
+    };
+    systemd.services."podman-strichliste-db" = {
+      serviceConfig = {
+        Restart = lib.mkOverride 500 "always";
+      };
+      after = [
+        "podman-network-strichliste_default.service"
+      ];
+      requires = [
+        "podman-network-strichliste_default.service"
+      ];
+      partOf = [
+        "podman-compose-strichliste-root.target"
+      ];
+      wantedBy = [
+        "podman-compose-strichliste-root.target"
+      ];
+    };
+
+    # Networks
+    systemd.services."podman-network-strichliste_default" = {
+      path = [ pkgs.podman ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStop = "podman network rm -f strichliste_default";
+      };
+      script = ''
+        podman network inspect strichliste_default || podman network create strichliste_default
+      '';
+      partOf = [ "podman-compose-strichliste-root.target" ];
+      wantedBy = [ "podman-compose-strichliste-root.target" ];
+    };
+
+    # Root service
+    # When started, this will automatically create all resources and start
+    # the containers. When stopped, this will teardown all resources.
+    systemd.targets."podman-compose-strichliste-root" = {
+      unitConfig = {
+        Description = "Root target generated by compose2nix.";
+      };
+      wantedBy = [ "multi-user.target" ];
     };
   };
-
-  # config.systemd.services.docker-strichliste.postStart = ''
-    # docker exec -it strichliste bash -c './../bin/console doctrine:schema:create'
-  # '';
 }
