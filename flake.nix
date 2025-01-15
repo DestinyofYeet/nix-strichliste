@@ -6,7 +6,7 @@
   };
 
   outputs =
-    { self, nixpkgs }@inputs:
+    { self, nixpkgs, }@inputs:
     {
       nixosModules.strichliste = {
         imports = [
