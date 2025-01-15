@@ -7,11 +7,6 @@
 
   outputs =
     { self, nixpkgs }@inputs:
-    let
-
-      pkgs = import nixpkgs { system = "x86_64-linux"; };
-
-    in
     {
       nixosModules.strichliste = import ./module.nix self;
 

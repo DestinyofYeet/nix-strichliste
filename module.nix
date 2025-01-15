@@ -1,5 +1,4 @@
-self:
-{
+self: {
   lib,
   config,
   pkgs,
@@ -42,9 +41,9 @@ in
         };
 
         common = mkSubmoduleOption {
-          idleTimer = mkOption {
+          idleTimeout = mkOption {
             type = types.ints.u32;
-            description = "Time in milliseconds";
+            description = "Timeout in milliseconds to return to the main screen";
             default = 30000;
           };
         };
@@ -67,7 +66,7 @@ in
           stalePeriod = mkOption {
             type = types.str;
             description = "Determines, when a user is considered 'inactive'";
-            default = "10d";
+            default = "10 day";
           };
         };
 
@@ -247,6 +246,12 @@ in
         type = types.str;
         description = "The directory to store the database in";
       };
+
+      port = mkOption {
+        type = types.port;
+        description = "The port to expose the strichliste on";
+        default = 8080;
+      };
     };
   };
 
@@ -282,7 +287,7 @@ in
           "${cfg.configFile}:/source/config/strichliste.yaml:rw"
           "${default-conf}:/etc/nginx/conf.d/default.conf"
         ];
-        ports = [ "8080:8080/tcp" ];
+        ports = [ "${toString cfg.port}:8080/tcp" ];
         log-driver = "journald";
         extraOptions = [
           "--network-alias=strichliste"
