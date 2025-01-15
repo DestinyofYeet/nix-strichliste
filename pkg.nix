@@ -1,12 +1,12 @@
 {
-  pkgs ? import <nixpkgs> {},
+  pkgs ? import <nixpkgs> { },
   ...
 }:
 
-let 
+let
   version = "1.8.2";
   php = pkgs.php81;
-in 
+in
 php.buildComposerProject {
   src = ./src/strichliste-v1.8.2;
   pname = "strichliste";

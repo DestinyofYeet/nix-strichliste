@@ -1,229 +1,359 @@
-self: { lib, config, pkgs, ... }:
-
-with lib;
+self:
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.services.strichliste;
-in {
+  inherit (lib)
+    mkEnableOption
+    types
+    mkOption
+    mkIf
+    ;
+
+  mkSubmoduleOption =
+    sub-cfg:
+    mkOption {
+      default = { };
+      type = types.submodule {
+        options = sub-cfg;
+      };
+    };
+in
+{
   options = {
     services.strichliste = {
-      enable = mkEnableOption "enable the strichliste";
+      enable = mkEnableOption "the strichliste";
 
-      databaseUrl = mkOption {
-        type = types.str;
-      };
+      settings = mkSubmoduleOption {
+        article = mkSubmoduleOption {
+          enabled = mkOption {
+            type = types.bool;
+            default = true;
+          };
+          autoOpen = mkOption {
+            type = types.bool;
+            default = false;
+          };
+        };
 
-      configuration = mkOption {
-        type = types.attrs;
-        description = "See 'https://github.com/strichliste/strichliste-backend/blob/master/docs/Config.md' for details";
-        default = {
-          parameters.strichliste = {
-            article = {
-              enable = true;
-              autoOpen = false;
+        common = mkSubmoduleOption {
+          idleTimer = mkOption {
+            type = types.ints.u32;
+            description = "Time in milliseconds";
+            default = 30000;
+          };
+        };
+
+        paypal = mkSubmoduleOption {
+          enabled = mkEnableOption "paypal payment feature";
+          recipient = mkOption {
+            type = types.nullOr types.str;
+            description = "Recipient mail Address (paypal account)";
+            default = null;
+          };
+          fee = mkOption {
+            type = types.ints.u8;
+            description = "Fee in percent (is added to the users balance)";
+            default = 0;
+          };
+        };
+
+        user = mkSubmoduleOption {
+          stalePeriod = mkOption {
+            type = types.str;
+            description = "Determines, when a user is considered 'inactive'";
+            default = "10d";
+          };
+        };
+
+        i18n = mkSubmoduleOption {
+          dateFormat = mkOption {
+            type = types.str;
+            description = "Date format";
+            default = "YYYY-MM-DD";
+          };
+
+          timezone = mkOption {
+            type = types.str;
+            description = "Timezone";
+            default = "auto";
+          };
+
+          language = mkOption {
+            type = types.str;
+            description = "Language";
+            default = "en";
+          };
+
+          currency = mkSubmoduleOption {
+            name = mkOption {
+              type = types.str;
+              description = "Currency";
+              default = "Euro";
             };
 
-            common.idleTimeout = 30000;
-
-            paypal = {
-              enable = false;
-              recipient = "foo@bar.de";
-              fee = 0;
+            symbol = mkOption {
+              type = types.str;
+              description = "Currency Symbol";
+              default = "€";
             };
 
-            user.stalePeriod = "240 day";
+            alpha3 = mkOption {
+              type = types.str;
+              description = "Alpha3 format for currency";
+              default = "EUR";
+            };
+          };
+        };
 
-            i18n = {
-              dateFormat = "DD-MM-YYYY HH:mm:ss";
-              timezone = "Europe/Berlin";
-              language = "de";
-
-              currency = {
-                name = "Euro";
-                symbol = "€";
-                alpha3 = "EUR";
-              };
+        account = mkSubmoduleOption {
+          boundary = mkSubmoduleOption {
+            upper = mkOption {
+              type = types.int;
+              description = "Upper account limit";
+              default = 20000;
             };
 
-            account.boundary = {
-              upper = 30000;
-              lower = -10000;
+            lower = mkOption {
+              type = types.int;
+              description = "Lower account limit";
+              default = -20000;
+            };
+          };
+        };
+
+        payment = mkSubmoduleOption {
+          undo = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable the undo feature";
+              default = true;
+            };
+            delete = mkOption {
+              type = types.bool;
+              description = "Delete or mark transaction as deleted on undo";
+              default = false;
             };
 
-            payment = {
-              undo = {
-                enable = true;
-                delete = false;
-                timeout = "5 minute";
-              };
-
-              boundary = {
-                upper = 30000;
-                lower = -20000;
-              };
-
-              transactions.enabled = true;
-              
-              splitInvoice.enabled = true;
-
-              deposit = {
-                enabled = true;
-                custom = true;
-                steps = [
-                  5
-                  10
-                  15
-                  20
-                  25
-                  50
-                  100
-                ];
-              };
-
-              dispense = {
-                enable = true;
-                custom = true;
-                steps = [
-                  5
-                  10
-                  15
-                  20
-                  25
-                  50
-                  100
-                ];
-              };
+            timeout = mkOption {
+              type = types.str;
+              description = "Period how long you're able to undo the transaction";
+              default = "5 minute";
             };
-          };  
+          };
+
+          boundary = mkSubmoduleOption {
+            upper = mkOption {
+              type = types.int;
+              description = "Upper transaction limit";
+              default = 15000;
+            };
+
+            lower = mkOption {
+              type = types.int;
+              description = "Lower transaction limit";
+              default = -2000;
+            };
+          };
+
+          transactions = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable sending money";
+              default = true;
+            };
+          };
+
+          splitInvoice = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable the ability to split invoices";
+              default = true;
+            };
+          };
+
+          deposit = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable quick money pay in";
+              default = true;
+            };
+
+            custom = mkOption {
+              type = types.bool;
+              description = "Enable / Disable the ability to deposit custom amounts";
+              default = true;
+            };
+
+            steps = mkOption {
+              type = types.listOf types.ints.unsigned;
+              description = "Available payment steps";
+              default = [
+                500
+                1000
+                1500
+                2000
+                2500
+                5000
+                10000
+              ];
+            };
+          };
+
+          dispense = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable quick expenditure";
+              default = true;
+            };
+
+            custom = mkOption {
+              type = types.bool;
+              description = "Enable / Disable the ability to expend custom amounts";
+              default = true;
+            };
+
+            steps = mkOption {
+              type = types.listOf types.ints.unsigned;
+              description = "Available expenditure steps";
+              default = [
+                500
+                1000
+                1500
+                2000
+                2500
+                5000
+                10000
+              ];
+            };
+          };
         };
       };
 
       configFile = mkOption {
         type = types.package;
-        default = ( pkgs.formats.yaml {} ).generate "strichliste.yaml" cfg.configuration;
+        # default = ( pkgs.formats.yaml {} ).generate "strichliste.yaml" cfg.configuration;
+        default = (pkgs.formats.yaml { }).generate "strichliste.yaml" {
+          parameters.strichliste = cfg.settings;
+        };
+      };
+
+      databaseDir = mkOption {
+        type = types.str;
+        description = "The directory to store the database in";
       };
     };
   };
 
-  config = let
-    database-url = "mysql://root:root@strichliste-db/strichliste";
-    default-conf = pkgs.substituteAll {
-      src = ./conf/default.conf;
+  config =
+    let
+      database-url = "mysql://root:root@strichliste-db/strichliste";
+      default-conf = pkgs.substituteAll {
+        src = ./conf/default.conf;
 
-      databaseUrl = database-url;
-    };
-  in mkIf cfg.enable {
+        databaseUrl = database-url;
+      };
+    in
+    mkIf cfg.enable {
 
-    virtualisation.oci-containers.backend = "docker";
+      virtualisation.oci-containers.backend = "docker";
 
-    virtualisation.docker = {
-      enable = true;
-      autoPrune.enable = true;
-    };
+      virtualisation.docker = {
+        enable = true;
+        autoPrune.enable = true;
+      };
 
-    # Containers
-    virtualisation.oci-containers.containers."strichliste" = {
-      image = "fsim/strichliste-docker:latest";
-      environment = {
-        "APP_ENV" = "prod";
-        "DATABASE_URL" = database-url;
-        "DB_HOST" = "strichliste-db";
+      # Containers
+      virtualisation.oci-containers.containers."strichliste" = {
+        image = "fsim/strichliste-docker:latest";
+        environment = {
+          "APP_ENV" = "prod";
+          "DATABASE_URL" = database-url;
+          "DB_HOST" = "strichliste-db";
+        };
+        volumes = [
+          "${./conf/doctrine.yaml}:/source/config/packages/doctrine.yaml:rw"
+          "${./conf/services.yaml}:/source/config/services.yaml:rw"
+          "${cfg.configFile}:/source/config/strichliste.yaml:rw"
+          "${default-conf}:/etc/nginx/conf.d/default.conf"
+        ];
+        ports = [ "8080:8080/tcp" ];
+        log-driver = "journald";
+        extraOptions = [
+          "--network-alias=strichliste"
+          "--network=strichliste_default"
+        ];
       };
-      volumes = [
-        "${./conf/doctrine.yaml}:/source/config/packages/doctrine.yaml:rw"
-        "${./conf/services.yaml}:/source/config/services.yaml:rw"
-        "${cfg.configFile}:/source/config/strichliste.yaml:rw"
-        "${default-conf}:/etc/nginx/conf.d/default.conf"
-      ];
-      ports = [
-        "8080:8080/tcp"
-      ];
-      log-driver = "journald";
-      extraOptions = [
-        "--network-alias=strichliste"
-        "--network=strichliste_default"
-      ];
-    };
-    systemd.services."docker-strichliste" = {
-      serviceConfig = {
-        Restart = lib.mkOverride 90 "no";
+      systemd.services."docker-strichliste" = {
+        serviceConfig = {
+          Restart = lib.mkOverride 90 "no";
+        };
+        after = [ "docker-network-strichliste_default.service" ];
+        requires = [ "docker-network-strichliste_default.service" ];
+        partOf = [ "docker-compose-strichliste-root.target" ];
+        wantedBy = [ "docker-compose-strichliste-root.target" ];
       };
-      after = [
-        "docker-network-strichliste_default.service"
-      ];
-      requires = [
-        "docker-network-strichliste_default.service"
-      ];
-      partOf = [
-        "docker-compose-strichliste-root.target"
-      ];
-      wantedBy = [
-        "docker-compose-strichliste-root.target"
-      ];
-    };
-    virtualisation.oci-containers.containers."strichliste-db" = {
-      image = "mariadb:10.11.5";
-      environment = {
-        "MYSQL_DATABASE" = "strichliste";
-        # "MYSQL_PASSWORD" = "strichliste";
-        "MYSQL_ROOT_PASSWORD" = "root";
-        # "MYSQL_ALLOW_EMPTY_PASSWORD" = "yes";
-        # "MYSQL_USER" = "strichliste";
-        "MARIADB_AUTO_UPGRADE" = "true";
+      virtualisation.oci-containers.containers."strichliste-db" = {
+        image = "mariadb:10.11.5";
+        environment = {
+          "MYSQL_DATABASE" = "strichliste";
+          # "MYSQL_PASSWORD" = "strichliste";
+          "MYSQL_ROOT_PASSWORD" = "root";
+          # "MYSQL_ALLOW_EMPTY_PASSWORD" = "yes";
+          # "MYSQL_USER" = "strichliste";
+          "MARIADB_AUTO_UPGRADE" = "true";
+        };
+        volumes = [ "${cfg.databaseDir}:/var/lib/mysql:rw" ];
+        log-driver = "journald";
+        extraOptions = [
+          "--network-alias=strichliste-db"
+          "--network=strichliste_default"
+        ];
       };
-      volumes = [
-        "/home/ole/github/strichliste-docker/data/mysql:/var/lib/mysql:rw"
-      ];
-      log-driver = "journald";
-      extraOptions = [
-        "--network-alias=strichliste-db"
-        "--network=strichliste_default"
-      ];
-    };
-    systemd.services."docker-strichliste-db" = {
-      serviceConfig = {
-        Restart = lib.mkOverride 90 "always";
-        RestartMaxDelaySec = lib.mkOverride 90 "1m";
-        RestartSec = lib.mkOverride 90 "100ms";
-        RestartSteps = lib.mkOverride 90 9;
+      systemd.services."docker-strichliste-db" = {
+        serviceConfig = {
+          Restart = lib.mkOverride 90 "always";
+          RestartMaxDelaySec = lib.mkOverride 90 "1m";
+          RestartSec = lib.mkOverride 90 "100ms";
+          RestartSteps = lib.mkOverride 90 9;
+        };
+        after = [ "docker-network-strichliste_default.service" ];
+        requires = [ "docker-network-strichliste_default.service" ];
+        partOf = [ "docker-compose-strichliste-root.target" ];
+        wantedBy = [ "docker-compose-strichliste-root.target" ];
       };
-      after = [
-        "docker-network-strichliste_default.service"
-      ];
-      requires = [
-        "docker-network-strichliste_default.service"
-      ];
-      partOf = [
-        "docker-compose-strichliste-root.target"
-      ];
-      wantedBy = [
-        "docker-compose-strichliste-root.target"
-      ];
-    };
 
-    # Networks
-    systemd.services."docker-network-strichliste_default" = {
-      path = [ pkgs.docker pkgs.git ];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStop = "docker network rm -f strichliste_default";
+      # Networks
+      systemd.services."docker-network-strichliste_default" = {
+        path = [
+          pkgs.docker
+          pkgs.git
+        ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStop = "docker network rm -f strichliste_default";
+        };
+        script = ''
+          docker network inspect strichliste_default || docker network create strichliste_default
+        '';
+        partOf = [ "docker-compose-strichliste-root.target" ];
+        wantedBy = [ "docker-compose-strichliste-root.target" ];
       };
-      script = ''
-        docker network inspect strichliste_default || docker network create strichliste_default
-      '';
-      partOf = [ "docker-compose-strichliste-root.target" ];
-      wantedBy = [ "docker-compose-strichliste-root.target" ];
-    };
 
-    # Root service
-    # When started, this will automatically create all resources and start
-    # the containers. When stopped, this will teardown all resources.
-    systemd.targets."docker-compose-strichliste-root" = {
-      unitConfig = {
-        Description = "Root target generated by compose2nix.";
+      # Root service
+      # When started, this will automatically create all resources and start
+      # the containers. When stopped, this will teardown all resources.
+      systemd.targets."docker-compose-strichliste-root" = {
+        unitConfig = {
+          Description = "Root target generated by compose2nix.";
+        };
+        wantedBy = [ "multi-user.target" ];
       };
-      wantedBy = [ "multi-user.target" ];
     };
-  };
 }
