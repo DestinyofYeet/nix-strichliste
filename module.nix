@@ -115,7 +115,7 @@ in
             upper = mkOption {
               type = types.int;
               description = "Upper account limit";
-              default = 20000;
+              default = 200000;
             };
 
             lower = mkOption {
