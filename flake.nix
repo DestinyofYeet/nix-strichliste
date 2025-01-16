@@ -8,13 +8,8 @@
   outputs =
     { self, nixpkgs, }@inputs:
     {
-      nixosModules.strichliste = {
-        imports = [
-          (
-            import ./module.nix { inherit nixpkgs; }
-          )
-        ];
-      };
+
+      nixosModules.strichliste = import ./module.nix self;
 
       formatter.x86_64-linux = nixpkgs.legacyPackages.x86_64-linux.nixfmt-rfc-style;
     };

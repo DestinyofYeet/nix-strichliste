@@ -1,4 +1,4 @@
-{nixpkgs, ...}: {
+self: {
   lib,
   config,
   pkgs,
@@ -236,7 +236,7 @@ in
 
       configFile = mkOption {
         type = types.package;
-        default = (nixpkgs.legacyPackages.${config.nixpkgs.system}.formats.yaml { }).generate "strichliste.yaml" {
+        default = (pkgs.formats.yaml { }).generate "strichliste.yaml" {
           parameters.strichliste = cfg.settings;
         };
       };
