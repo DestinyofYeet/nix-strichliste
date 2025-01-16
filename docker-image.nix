@@ -3,69 +3,22 @@
   config
 }:
 
-let 
-  # app = (pkgs.callPackage ./pkg.nix { });
-  # pkgRoot = "${app}/share/php/strichliste";
-
-  pkgRoot = pkgs.stdenv.mkDerivation {
-    name = "strichliste-source";
-    # srcs = builtins.fetchurl {
-      # url = "https://github.com/strichliste/strichliste/releases/download/v1.8.2/strichliste-v1.8.2.tar.gz";
-      # sha256 = "0p931wb5fvab1r8drd99cc1zl3gwaaxnic2brv13k64cxzxf85a6";
-    # };
-
-    # sourceRoot = ".";
-    src = ./tar-src;
-
-    # setSourceRoot = "sourceRoot=.";
-
-    installPhase = ''
-      mkdir -p $out
-
-      cp -r $src/* $out
-    '';
-  };
-
+let
   appRoot = "/source";
 
   cfg = config.services.strichliste;
-  cfgOci = config.virtualisation.oci-containers.containers.strichliste;
 
-  nginx-port = "8080";
-
-  nginx-default-conf = pkgs.substituteAll {
-    src = ./conf/default.conf;
-
-    nginxPort = nginx-port;
-    inherit appRoot;
-
-    databaseUrl = cfgOci.environment.DATABASE_URL;
-
-    fastcgiParams = "${pkgs.nginx}/conf/fastcgi_params";
-  };
-
-  nginx-nginx-conf = pkgs.substituteAll {
-    src = ./conf/nginx.conf;
-
-    mimetypes = "${pkgs.nginx}/conf/mime.types";
-  };
-
-  env-file = pkgs.substituteAll {
-    src = ./conf/env.env;
-    appEnv = cfgOci.environment.APP_ENV;
-    databaseUrl = cfgOci.environment.DATABASE_URL;
-  };
-
+  src = ./tar-src;
+  
   start-script = pkgs.writeScriptBin "start-server" '' 
       #!${pkgs.runtimeShell}
-      php bin/console doctrine:schema:create --no-interaction
-      chown -R www-data:www-data ${appRoot}/var
+      # chown -R www-data:www-data ${appRoot}/var
       /source/entrypoint.sh nginx -c /etc/nginx/nginx.conf && php-fpm -y /etc/php81/php-fpm.conf
   '';
 
 in pkgs.dockerTools.buildImage {
   name = "strichliste";
-  tag = "latest";
+  tag = "nix-v1";
 
   created = "now";
 
@@ -90,70 +43,46 @@ in pkgs.dockerTools.buildImage {
     ];
     pathsToLink = [ "/bin" ];
   };
-
-  # use 
-  # cp -r ${pkgRoot}/* ${appRoot}
-  # instead of 
-  # curl -Lo ...
-  # to use the built package instead
   
   runAsRoot = ''
     mkdir -p ${appRoot}
-    mkdir -p /var/log/nginx
-    mkdir -p /var/lib/nginx
-    mkdir -p /var/cache/nginx
-    mkdir -p /var/log/php
-    mkdir -p /var/log/php-fpm
+    mkdir -p ${appRoot}/var
+    mkdir -p /var/{log,lib}/nginx
+    mkdir -p /var/log/php81
     mkdir -p /tmp
     chmod 1777 /tmp
 
-    cp -r ${pkgRoot}/* ${appRoot}
-    
-    cp -r ${cfg.configFile}/strichliste.yaml ${appRoot}/config/strichliste.yaml
-    # cp -r ${./conf/strichliste.yaml} ${appRoot}/config/strichliste.yaml
+    cd ${appRoot}
 
-    cp ${./conf/entrypoint.sh} ${appRoot}/entrypoint.sh
-    chmod +x ${appRoot}/entrypoint.sh
+    cp -r ${src}/* .
 
-    mkdir -p /etc/php81/php-fpm.d
-    mkdir -p /etc/php81/conf.d
-    mkdir -p /etc/nginx/conf.d
+    cp ${./entrypoint.sh} entrypoint.sh
 
-    cp ${./conf/php-fpm.conf} /etc/php81/php-fpm.conf
-    cp ${./conf/www.conf} /etc/php81/php-fpm.d/www.conf
-    cp ${nginx-nginx-conf} /etc/nginx/nginx.conf
-    cp ${nginx-default-conf} /etc/nginx/conf.d/default.conf
+    chmod +x entrypoint.sh
 
-    cp ${./conf/doctrine.yaml} ${appRoot}/config/packages/doctrine.yaml
-    cp ${./conf/services.yaml} ${appRoot}/config/services.yaml
-    cp ${env-file} ${appRoot}/.env
+    adduser -u 82 -D -S -G www-data www-data
 
-    ${pkgs.dockerTools.shadowSetup}
-
-    # raw-dogging usermod and groupadd
-    echo "www-data:x:82:82:www-data:/var/empty:/bin/false" >> /etc/passwd
-    echo "www-data:x:82:" >> /etc/group
-    echo "www-data:1:1::::::" >> /etc/shadow
-
-    echo "nobody:x:65534:65534:nogroup:/var/empty:/bin/false" >> /etc/passwd
-    echo "nogroup:x:65534:" >> /etc/group
-    echo "nobody:!:1::::::" >> /etc/shadow
-
-    chown -R www-data:www-data /var/log/nginx
+    chown -R www-data:www-data /source
     chown -R www-data:www-data /var/lib/nginx
-    chown -R www-data:www-data /var/cache/nginx
-    chown -R www-data:www-data /var/log/php
-    chown -R www-data:www-data /var/log/php-fpm
-    chown -R www-data:www-data ${appRoot}
+    chown -R www-data:www-data /var/log/nginx
+    chown -R www-data:www-data /var/log/php81
 
-    chmod -R u+w ${appRoot}
-    chmod -R g+w ${appRoot}
+    su www-data
+
+    cp ./config/php-fpm.conf /etc/php81/php-fpm.conf
+    cp ./config/www.conf /etc/php81/php-fpm.d/www.conf
+    cp ./config/nginx.conf /etc/nginx/nginx.conf
+    cp ./config/default.conf /etc/nginx/conf.d/default.conf
+
+    mkdir /source/var
+
+    cd /source/var
   '';
 
   config = {
     Cmd = [ "start-server" ];
     ExposedPorts = {
-      "${nginx-port}/tcp" = {};
+      "${toString cfg.port}/tcp" = {};
     };
 
     WorkDir = "${appRoot}/public";
