@@ -17,8 +17,8 @@ let
   writeableDirsPath = pkgs.substituteAll {
     src = ./patches/makeDirectoriesWriteable.patch;
 
-    cacheDir = cfg.cacheDir;
-    logDir = cfg.logDir;
+    cacheDir = cfg.dataDir + "/cache";
+    logDir = cfg.dataDir + "/log";
   };
 
   app-src = pkgs.stdenv.mkDerivation {

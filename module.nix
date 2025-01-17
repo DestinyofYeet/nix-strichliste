@@ -39,86 +39,15 @@ let
     '';
   };
 
-  default-options = {
-    parameters.strichliste = {
-      article = {
-        enable = true;
-        autoOpen = false;
+  mkSubmoduleOption =
+    sub-cfg:
+    mkOption {
+      default = { };
+      type = types.submodule {
+        options = sub-cfg;
       };
+    };
 
-      common.idleTimeout = 30000;
-
-      paypal = {
-        enable = false;
-        recipient = "foo@bar.de";
-        fee = 0;
-      };
-
-      user.stalePeriod = "240 day";
-
-      i18n = {
-        dateFormat = "DD-MM-YYYY HH:mm:ss";
-        timezone = "Europe/Berlin";
-        language = "de";
-
-        currency = {
-          name = "Euro";
-          symbol = "€";
-          alpha3 = "EUR";
-        };
-      };
-
-      account.boundary = {
-        upper = 30000;
-        lower = -10000;
-      };
-
-      payment = {
-        undo = {
-          enable = true;
-          delete = false;
-          timeout = "5 minute";
-        };
-
-        boundary = {
-          upper = 30000;
-          lower = -20000;
-        };
-
-        transaction.enabled = true;
-      
-        splitInvoice.enabled = true;
-
-        deposit = {
-          enabled = true;
-          custom = true;
-          steps = [
-            5
-            10
-            15
-            20
-            25
-            50
-            100
-          ];
-        };
-
-        dispense = {
-          enable = true;
-          custom = true;
-          steps = [
-            5
-            10
-            15
-            20
-            25
-            50
-            100
-          ];
-        };
-      };
-    };  
-  };
 in {
   options = {
     services.strichliste = {
@@ -133,19 +62,13 @@ in {
         type = types.str;
       };
 
-      cacheDir = mkOption {
+      dataDir = mkOption {
         type = types.str;
-        description = "Needs to be writable by ${cfg.phpfpmSettings.user}";
-        default = "/var/lib/strichliste/cache";
+        description = "Data directory";
+        default = "/var/lib/strichliste";
       };
 
-      logDir = mkOption {
-        type = types.str;
-        description = "Needs to be writable by ${cfg.phpfpmSettings.user}";
-        default = "/var/lib/strichliste/log";
-      };
-
-      nginxSettings = {
+      nginxSettings = mkSubmoduleOption {
         configure = mkOption {
           type = types.bool;
           default = true;
@@ -163,7 +86,7 @@ in {
         };
       };
 
-      phpfpmSettings = {
+      phpfpmSettings = mkSubmoduleOption {
         configure = mkOption {
           type = types.bool;
           default = true;
@@ -171,70 +94,287 @@ in {
 
         user = mkOption {
           type = types.str;
-          default = "nginx";
+          default = "strichliste";
         };
       };
 
-      configuration = mkOption {
-        type = types.attrs;
-        description = "See 'https://github.com/strichliste/strichliste-backend/blob/master/docs/Config.md' for details";
-        default = default-options;
+      settings = mkSubmoduleOption {
+        article = mkSubmoduleOption {
+          enabled = mkOption {
+            type = types.bool;
+            default = true;
+          };
+          autoOpen = mkOption {
+            type = types.bool;
+            default = false;
+          };
+        };
+
+        common = mkSubmoduleOption {
+          idleTimeout = mkOption {
+            type = types.ints.u32;
+            description = "Timeout in milliseconds to return to the main screen";
+            default = 30000;
+          };
+        };
+
+        paypal = mkSubmoduleOption {
+          enabled = mkEnableOption "paypal payment feature";
+          recipient = mkOption {
+            type = types.nullOr types.str;
+            description = "Recipient mail Address (paypal account)";
+            default = null;
+          };
+          fee = mkOption {
+            type = types.ints.u8;
+            description = "Fee in percent (is added to the users balance)";
+            default = 0;
+          };
+        };
+
+        user = mkSubmoduleOption {
+          stalePeriod = mkOption {
+            type = types.str;
+            description = "Determines, when a user is considered 'inactive'";
+            default = "10 day";
+          };
+        };
+
+        i18n = mkSubmoduleOption {
+          dateFormat = mkOption {
+            type = types.str;
+            description = "Date format";
+            default = "YYYY-MM-DD";
+          };
+
+          timezone = mkOption {
+            type = types.str;
+            description = "Timezone";
+            default = "auto";
+          };
+
+          language = mkOption {
+            type = types.str;
+            description = "Language";
+            default = "en";
+          };
+
+          currency = mkSubmoduleOption {
+            name = mkOption {
+              type = types.str;
+              description = "Currency";
+              default = "Euro";
+            };
+
+            symbol = mkOption {
+              type = types.str;
+              description = "Currency Symbol";
+              default = "€";
+            };
+
+            alpha3 = mkOption {
+              type = types.str;
+              description = "Alpha3 format for currency";
+              default = "EUR";
+            };
+          };
+        };
+
+        account = mkSubmoduleOption {
+          boundary = mkSubmoduleOption {
+            upper = mkOption {
+              type = types.int;
+              description = "Upper account limit";
+              default = 200000;
+            };
+
+            lower = mkOption {
+              type = types.int;
+              description = "Lower account limit";
+              default = -20000;
+            };
+          };
+        };
+
+        payment = mkSubmoduleOption {
+          undo = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable the undo feature";
+              default = true;
+            };
+            delete = mkOption {
+              type = types.bool;
+              description = "Delete or mark transaction as deleted on undo";
+              default = false;
+            };
+
+            timeout = mkOption {
+              type = types.str;
+              description = "Period how long you're able to undo the transaction";
+              default = "5 minute";
+            };
+          };
+
+          boundary = mkSubmoduleOption {
+            upper = mkOption {
+              type = types.int;
+              description = "Upper transaction limit";
+              default = 15000;
+            };
+
+            lower = mkOption {
+              type = types.int;
+              description = "Lower transaction limit";
+              default = -2000;
+            };
+          };
+
+          transactions = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable sending money";
+              default = true;
+            };
+          };
+
+          splitInvoice = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable the ability to split invoices";
+              default = true;
+            };
+          };
+
+          deposit = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable quick money pay in";
+              default = true;
+            };
+
+            custom = mkOption {
+              type = types.bool;
+              description = "Enable / Disable the ability to deposit custom amounts";
+              default = true;
+            };
+
+            steps = mkOption {
+              type = types.listOf types.ints.unsigned;
+              description = "Available payment steps";
+              default = [
+                500
+                1000
+                1500
+                2000
+                2500
+                5000
+                10000
+              ];
+            };
+          };
+
+          dispense = mkSubmoduleOption {
+            enabled = mkOption {
+              type = types.bool;
+              description = "Enable / Disable quick expenditure";
+              default = true;
+            };
+
+            custom = mkOption {
+              type = types.bool;
+              description = "Enable / Disable the ability to expend custom amounts";
+              default = true;
+            };
+
+            steps = mkOption {
+              type = types.listOf types.ints.unsigned;
+              description = "Available expenditure steps";
+              default = [
+                500
+                1000
+                1500
+                2000
+                2500
+                5000
+                10000
+              ];
+            };
+          };
+        };
       };
 
       configFile = mkOption {
         type = types.package;
-        default = ( pkgs.formats.yaml {} ).generate "strichliste.yaml" (recursiveMerge [ default-options cfg.configuration ]);
+        default = (pkgs.formats.yaml { }).generate "strichliste.yaml" {
+          parameters.strichliste = cfg.settings;
+        };
       };
     };
   };
 
   config = mkIf cfg.enable {
 
-    services.nginx.virtualHosts = mkIf cfg.nginxSettings.configure {
-      ${cfg.nginxSettings.domain} = {
-        listenAddresses = cfg.nginxSettings.listenAddress;
-        root = "${cfg.package}/public";
-        locations = {
+    users = lib.mkIf (cfg.phpfpmSettings.user == "strichliste") {
+      users.strichliste = {
+        isSystemUser = true;
+        createHome = true;
+        home = "/var/lib/strichliste";
 
-          "/" = {
-            tryFiles = "$uri /index.php$is_args$args";
-          };
+        group = "strichliste";
+      };
 
-          "~ ^/index\.php(/|$)" = {
-            fastcgiParams = {
-              SCRIPT_FILENAME = "$document_root$fastcgi_script_name";
-              PATH_INFO = "$fastcgi_path_info";
+      groups.strichliste = {};
+    };
 
-              DATABASE_URL = cfg.databaseUrl;
+    services.nginx = mkIf cfg.nginxSettings.configure {
+      enable = true;
+      virtualHosts = {
+        ${cfg.nginxSettings.domain} = {
+          listenAddresses = cfg.nginxSettings.listenAddress;
+          root = "${cfg.package}/public";
+          locations = {
 
-              modHeadersAvailable = "true";
-              front_controller_active = "true";
+            "/" = {
+              tryFiles = "$uri /index.php$is_args$args";
             };
-            extraConfig = ''
-              fastcgi_split_path_info ^(.+\.php)(/.*)$;
 
-              # fastcgi_pass unix:${config.services.phpfpm.pools.strichliste.socket};
-              fastcgi_pass 127.0.0.1:9000;
-              fastcgi_intercept_errors on;
-              fastcgi_request_buffering off;
+            "~ ^/index\.php(/|$)" = {
+              fastcgiParams = {
+                SCRIPT_FILENAME = "$document_root$fastcgi_script_name";
+                PATH_INFO = "$fastcgi_path_info";
 
-              include ${pkgs.nginx}/conf/fastcgi.conf;
+                DATABASE_URL = cfg.databaseUrl;
 
-              internal;
-            '';
+                modHeadersAvailable = "true";
+                front_controller_active = "true";
+              };
+              extraConfig = ''
+                fastcgi_split_path_info ^(.+\.php)(/.*)$;
+
+                # fastcgi_pass unix:${config.services.phpfpm.pools.strichliste.socket};
+                fastcgi_pass 127.0.0.1:9000;
+                fastcgi_intercept_errors on;
+                fastcgi_request_buffering off;
+
+                include ${pkgs.nginx}/conf/fastcgi.conf;
+
+                internal;
+              '';
+            };
+
+            # "~ \\.php$" = {
+            #   return = 404;
+            # };
           };
 
-          # "~ \\.php$" = {
-          #   return = 404;
-          # };
-        };
-
-        extraConfig = ''
-          location ~ \.php$ {
-            return 404;
-          }
-        '';
-      };      
+          extraConfig = ''
+            location ~ \.php$ {
+              return 404;
+            }
+          '';
+        };      
+      };
     };
 
     services.phpfpm.pools.strichliste = mkIf cfg.phpfpmSettings.configure {
