@@ -58,8 +58,22 @@ in {
         default = patchDerivation;
       };
 
+      database = mkSubmoduleOption {
+        configure = mkOption {
+          type = types.bool;
+          description = "Configure the database for you";
+          default = true;
+        };
+
+        url = mkOption {
+          type = types.nullOr types.str;
+          default = if (cfg.database.configure) then "mysql://strichliste@localhost/strichliste" else null;
+        };
+      };
+
       databaseUrl = mkOption {
-        type = types.str;
+        type = types.nullOr types.str;
+        default = "mysql://strichliste@localhost/strichliste";
       };
 
       dataDir = mkOption {
@@ -314,6 +328,32 @@ in {
   };
 
   config = mkIf cfg.enable {
+
+    services.mysql = lib.mkIf (cfg.database.configure) {
+      enable = true;
+
+      package = lib.mkDefault pkgs.mariadb;
+      
+      ensureUsers = [
+        {
+          name = "strichliste";
+          ensurePermissions = {
+            "strichliste.*" = "ALL PRIVILEGES";
+          };
+        }
+      ];
+
+      ensureDatabases = [
+        "strichliste"
+      ];
+
+      initialDatabases = [
+        {
+          name = "strichliste";
+          schema = ./schema.sql;
+        }
+      ];
+    };
 
     users = lib.mkIf (cfg.phpfpmSettings.user == "strichliste") {
       users.strichliste = {

@@ -8,6 +8,11 @@ let
   version = "1.8.2";
   php = pkgs.php81;
 
+  env-file = pkgs.writeText ".env" ''
+    APP_ENV=prod
+    DATABASE_URL="${cfg.databaseUrl}"
+  '';
+
   yamlPatch = pkgs.substituteAll {
     src = ./patches/strichlisteYaml.patch;
 
@@ -36,6 +41,7 @@ let
     installPhase = ''
       mkdir -p $out
       cp -r * $out/
+      cp ${env-file} $out/.env
     '';
 
     patches = [
