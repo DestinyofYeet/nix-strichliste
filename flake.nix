@@ -11,7 +11,7 @@
 
   in {
 
-    packages.x86_64-linux.strichliste = pkgs.callPackage ./pkg.nix {};
-    nixosModules.strichliste = import ./module.nix self;
+    packages.x86_64-linux.strichliste = pkgs.callPackage ./nix/pkg.nix {};
+    nixosModules.strichliste = import ./nix/module.nix self;
   };
 }
