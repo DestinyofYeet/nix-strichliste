@@ -438,5 +438,7 @@ in {
       # maybe make this php automatically take the version defined in pkg.nix or vice-versa
       phpEnv."PATH" = lib.makeBinPath [ pkgs.php81 ];
     };
+
+    systemd.services."phpfpm-strichliste".serviceConfig.ExecStartPre = "${pkgs.bash}/bin/bash -c 'rm -fr ${cfg.dataDir}/cache'";
   };
 }
