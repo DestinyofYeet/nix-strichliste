@@ -58,6 +58,12 @@ in {
         default = patchDerivation;
       };
 
+      frontEnd = mkOption {
+        type = types.nullOr types.package;
+        default = null;
+        description = "Provide your own frontend";
+      };
+
       database = mkSubmoduleOption {
         configure = mkOption {
           type = types.bool;
