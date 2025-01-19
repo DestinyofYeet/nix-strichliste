@@ -28,8 +28,8 @@ let
 
   app-src = let
      customFrontend = builtins.fetchTarball {
-      url = "https://git.ole.blue/ole/strichliste-frontend/raw/commit/66a6fbe7bb784cb000b548967b595f2b50dc3e73/build.tar";
-      sha256 = "1jxd5ha694xbf41lq8fjsvfyl7dhd302p509i0kpzshcag6cay3d";
+      url = "https://git.ole.blue/ole/strichliste-frontend/raw/commit/0cff7b839baa9bb27093a80e8bc53b41c3498e85/build.tar";
+      sha256 = "0camz2wmn7xknb2nfn5mrvdf8qygagljkah2v1hq2nvnwdng8418";
     };
     
   in pkgs.stdenv.mkDerivation {
