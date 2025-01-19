@@ -38,23 +38,29 @@ let
     unpackPhase = ''
       tar -xvf $src
     '';
-    installPhase = ''
+
+    installPhase = if (cfg.frontEnd == null) then ''
       mkdir -p $out
       cp -r * $out/
+      cp ${env-file} $out/.env
+    '' else ''
+      mkdir -p $out
+      cp -r * $out/
+      rm -fr $out/public/*
+      cp -r ${cfg.frontEnd}/* $out/public/
+      cp public/index.php $out/public/index.php
       cp ${env-file} $out/.env
     '';
 
     patches = [
       ./patches/makeBuildable.patch
       ./patches/fix-doctrine.patch
-      # ./patches/js-fix.patch
       writeableDirsPath
       yamlPatch
     ];
   };
 in 
 php.buildComposerProject {
-  # src = ./src/strichliste-v1.8.2;
   src = app-src;
 
   pname = "strichliste";
