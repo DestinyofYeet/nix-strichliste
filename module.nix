@@ -1,10 +1,12 @@
-self: { lib, config, pkgs, ... }:
-
-with lib;
-
-let
+self: {
+  lib,
+  config,
+  pkgs,
+  ...
+}:
+with lib; let
   recursiveMerge = listOfAttrsets:
-    lib.fold (attrset: acc: lib.recursiveUpdate attrset acc) { } listOfAttrsets;
+    lib.fold (attrset: acc: lib.recursiveUpdate attrset acc) {} listOfAttrsets;
 
   cfg = config.services.strichliste;
 
@@ -17,10 +19,10 @@ let
   moveFilesDerivation = pkgs.stdenv.mkDerivation {
     name = "wrap-env-file";
 
-    src = pkgs.callPackage ./pkg.nix {
+    src = pkgs.callPackage ./pkgs/backend.nix {
       inherit pkgs cfg;
     };
-  
+
     installPhase = ''
       mkdir -p $out
       cp -r $src/share/php/strichliste/* $out
@@ -39,15 +41,20 @@ let
     '';
   };
 
-  mkSubmoduleOption =
-    sub-cfg:
+  mkSubmoduleOption = sub-cfg:
     mkOption {
-      default = { };
+      default = {};
       type = types.submodule {
         options = sub-cfg;
       };
     };
 
+  mkSoundOption = desc:
+    mkOption {
+      default = [];
+      type = types.listOf types.path;
+      description = desc;
+    };
 in {
   options = {
     services.strichliste = {
@@ -58,10 +65,29 @@ in {
         default = patchDerivation;
       };
 
-      frontEnd = mkOption {
-        type = types.nullOr types.package;
-        default = null;
-        description = "Provide your own frontend";
+      customSounds = mkSubmoduleOption {
+        enable = mkOption {
+          type = types.bool;
+          default = false;
+          description = "Wether to enable custom sounds";
+        };
+        depositSounds = mkSoundOption "Sounds to be played when users deposit money";
+        failedSounds = mkSoundOption "Sounds to be played when a transaction fails";
+        withdrawSounds = mkSoundOption "Sounds to be played when a user withdraws money without buying anything";
+        baselineSounds = mkSoundOption "Sounds to be played when an item is bought and has noting else set";
+        specificSounds = mkOption {
+          default = [];
+          type = types.listOf (lib.types.submodule {
+            options = {
+              id = mkOption {
+                type = types.int;
+                description = "The id of the article to set the sound to";
+              };
+
+              sounds = mkSoundOption "Sounds to be played for that custom article";
+            };
+          });
+        };
       };
 
       database = mkSubmoduleOption {
@@ -73,7 +99,10 @@ in {
 
         url = mkOption {
           type = types.nullOr types.str;
-          default = if (cfg.database.configure) then "mysql://strichliste@localhost/strichliste" else null;
+          default =
+            if (cfg.database.configure)
+            then "mysql://strichliste@localhost/strichliste"
+            else null;
         };
       };
 
@@ -102,7 +131,7 @@ in {
         listenAddress = mkOption {
           type = types.listOf types.str;
           description = "The address nginx should listen on";
-          default = [ "0.0.0.0" ];
+          default = ["0.0.0.0"];
         };
       };
 
@@ -326,7 +355,7 @@ in {
 
       configFile = mkOption {
         type = types.package;
-        default = (pkgs.formats.yaml { }).generate "strichliste.yaml" {
+        default = (pkgs.formats.yaml {}).generate "strichliste.yaml" {
           parameters.strichliste = cfg.settings;
         };
       };
@@ -334,12 +363,11 @@ in {
   };
 
   config = mkIf cfg.enable {
-
     services.mysql = lib.mkIf (cfg.database.configure) {
       enable = true;
 
       package = lib.mkDefault pkgs.mariadb;
-      
+
       ensureUsers = [
         {
           name = "strichliste";
@@ -380,7 +408,6 @@ in {
           listenAddresses = cfg.nginxSettings.listenAddress;
           root = "${cfg.package}/public";
           locations = {
-
             "/" = {
               tryFiles = "$uri /index.php$is_args$args";
             };
@@ -419,7 +446,7 @@ in {
               return 404;
             }
           '';
-        };      
+        };
       };
     };
 
@@ -442,7 +469,7 @@ in {
       };
 
       # maybe make this php automatically take the version defined in pkg.nix or vice-versa
-      phpEnv."PATH" = lib.makeBinPath [ pkgs.php81 ];
+      phpEnv."PATH" = lib.makeBinPath [pkgs.php81];
     };
 
     systemd.services."phpfpm-strichliste".serviceConfig.ExecStartPre = "${pkgs.bash}/bin/bash -c 'rm -fr ${cfg.dataDir}/cache'";

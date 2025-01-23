@@ -1,0 +1,24 @@
+diff --git a/src/store/reducers/transaction.ts b/src/store/reducers/transaction.ts
+index c9e3ccb..9a990e7 100644
+--- a/src/store/reducers/transaction.ts
++++ b/src/store/reducers/transaction.ts
+@@ -84,7 +84,6 @@ export async function startCreatingTransaction(
+   userId: string,
+   params: CreateTransactionParams
+ ): Promise<Transaction | undefined> {
+-  playCashSound(params);
+   const promise = post(`user/${userId}/transaction`, params);
+   const data = await errorHandler<TransactionResponse>(dispatch, {
+     promise,
+@@ -93,8 +92,10 @@ export async function startCreatingTransaction(
+   if (data && data.transaction) {
+     dispatch(userDetailsLoaded(data.transaction.user));
+     dispatch(transactionsLoaded([data.transaction]));
++    playCashSound(params);
+     return data.transaction;
+   }
++  playCashSound(undefined, true);
+   return undefined;
+ }
+ export type StartCreatingTransaction = typeof startCreatingTransaction;
+
