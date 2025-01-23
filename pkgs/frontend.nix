@@ -27,7 +27,7 @@
     soundFiles = mkSoundFiles customSounds.specificSounds;
   };
 
-  buildCpCommand = soundList: (builtins.concatStringsSep "\n" (map (file: "cp ${file} public/sounds/${builtins.baseNameOf file}") soundList));
+  buildCpCommand = soundList: (builtins.concatStringsSep "\n" (map (file: "cp -n ${file} public/sounds/${builtins.baseNameOf file}") soundList));
   buildSpecificCpCommands = soundList: (builtins.concatStringsSep "\n" (map (value: buildCpCommand value.sounds) soundList));
 in
   pkgs.stdenv.mkDerivation (finalAttrs: {
