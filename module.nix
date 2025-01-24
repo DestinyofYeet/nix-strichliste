@@ -76,18 +76,25 @@ in {
         withdrawSounds = mkSoundOption "Sounds to be played when a user withdraws money without buying anything";
         baselineSounds = mkSoundOption "Sounds to be played when an item is bought and has noting else set";
         specificSounds = mkOption {
-          default = [];
-          type = types.listOf (lib.types.submodule {
+          type = types.attrsOf (types.submodule {
             options = {
-              id = mkOption {
-                type = types.int;
-                description = "The id of the article to set the sound to";
-              };
-
-              sounds = mkSoundOption "Sounds to be played for that custom article";
+              sounds = mkSoundOption "Sounds to be played for that specific article";
             };
           });
         };
+        # specificSounds = mkOption {
+        #   default = [];
+        #   type = types.listOf (lib.types.submodule {
+        #     options = {
+        #       id = mkOption {
+        #         type = types.int;
+        #         description = "The id of the article to set the sound to";
+        #       };
+
+        #       sounds = mkSoundOption "Sounds to be played for that custom article";
+        #     };
+        #   });
+        # };
       };
 
       database = mkSubmoduleOption {

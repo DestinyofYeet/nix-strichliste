@@ -10,10 +10,7 @@
     then "\"\""
     else builtins.concatStringsSep ", " (map (store: "\"${builtins.baseNameOf store}\"") soundList);
 
-  mkSoundFiles = soundList:
-    if ((lib.lists.length soundList) == 0)
-    then "\"\""
-    else builtins.concatStringsSep ", " (map (value: "[${toString value.id}, [${soundsToStrings value.sounds}]]") soundList);
+  mkSoundFiles = soundAttrs: builtins.concatStringsSep ", " (lib.flatten (lib.mapAttrsToList (name: value: "[${name}, [${soundsToStrings value.sounds}]]") soundAttrs));
 
   customSounds = cfg.customSounds;
 
@@ -28,7 +25,7 @@
   };
 
   buildCpCommand = soundList: (builtins.concatStringsSep "\n" (map (file: "cp -n ${file} public/sounds/${builtins.baseNameOf file}") soundList));
-  buildSpecificCpCommands = soundList: (builtins.concatStringsSep "\n" (map (value: buildCpCommand value.sounds) soundList));
+  buildSpecificCpCommands = soundAtrs: (builtins.concatStringsSep "\n" (lib.unique (lib.flatten (lib.mapAttrsToList (name: value: buildCpCommand value.sounds) soundAtrs))));
 in
   pkgs.stdenv.mkDerivation (finalAttrs: {
     pname = "strichliste-frontend";
