@@ -1,0 +1,125 @@
+diff --git a/src/components/article/article-scanner.tsx b/src/components/article/article-scanner.tsx
+index cb24cd8..c1ed1ba 100644
+--- a/src/components/article/article-scanner.tsx
++++ b/src/components/article/article-scanner.tsx
+@@ -30,6 +30,7 @@ export const ArticleScanner = (props: Props) => {
+       if (article) {
+         startCreatingTransaction(dispatch, props.userId, {
+           articleId: article.id,
++          articleName: article.name,
+         });
+       }
+     } catch (error) {
+diff --git a/src/components/user/views/user-article-transaction.tsx b/src/components/user/views/user-article-transaction.tsx
+index 2298f52..8d23beb 100644
+--- a/src/components/user/views/user-article-transaction.tsx
++++ b/src/components/user/views/user-article-transaction.tsx
+@@ -16,6 +16,7 @@ async function onSelect(
+     props.match.params.id,
+     {
+       articleId: article.id,
++      articleName: article.name,
+     }
+   );
+   if (result) {
+diff --git a/src/services/sound.ts b/src/services/sound.ts
+index 146919e..8f7ca9a 100644
+--- a/src/services/sound.ts
++++ b/src/services/sound.ts
+@@ -1,11 +1,61 @@
+ import { Howl } from 'howler';
+ import { CreateTransactionParams } from '../store/reducers';
+ 
+-const dispense = new Howl({
+-  src: ['ka-ching.wav'],
+-});
++function getRand(list: Array<string>) : string {
++  return list[Math.floor(Math.random() * list.length)]
++}
++
++function playSound(sound: string) {
++  getDispense("sounds/" + sound).play();
++}
++
++const einzahlungsFiles = [@depositFiles@];
++
++const failedFiles = [@failedFiles@];
++
++const auszahlungsFiles = [@withdrawFiles@];
++
++const baseFiles = [@baseFiles@];
++
++function getDispense(file?: string) {
++  if (file == null) {
++    file = getRand(baseFiles);
++  }
++  return new Howl({ src: [file]});
++}
++
++const soundFiles = new Map<string, Array<string>>([@soundFiles@]);
+ 
+ // eslint-disable-next-line @typescript-eslint/no-unused-vars
+-export function playCashSound(_params?: CreateTransactionParams): void {
+-  dispense.play();
++export function playCashSound(_params?: CreateTransactionParams, failed = false): void {
++  if (failed){
++      playSound(getRand(failedFiles));
++      return;
++  }
++
++  if (_params == null){
++    getDispense(getRand(baseFiles)).play();
++    return;
++  }
++
++  console.log(_params);
++
++  if (_params.articleName != null) {
++    // Artikel gekauft
++    const articleName = _params.articleName;
++    const soundFileArray = soundFiles.get(articleName);
++    if (soundFileArray != null) {
++      playSound(getRand(soundFileArray));
++    } else {
++      playSound(getRand(baseFiles));
++    }
++  } else if (_params.amount != null && _params.articleId == null && _params.recipientId == null){
++    // Geld eingezahlt
++    const amount = _params.amount;
++    if (amount > 0){
++      playSound(getRand(einzahlungsFiles));
++    } else {
++      playSound(getRand(auszahlungsFiles));
++    }
++  }
+ }
+diff --git a/src/store/reducers/transaction.ts b/src/store/reducers/transaction.ts
+index c9e3ccb..fb598d5 100644
+--- a/src/store/reducers/transaction.ts
++++ b/src/store/reducers/transaction.ts
+@@ -78,13 +78,13 @@ export interface CreateTransactionParams {
+   articleId?: number;
+   recipientId?: string;
+   comment?: string;
++  articleName?: string;
+ }
+ export async function startCreatingTransaction(
+   dispatch: Dispatch,
+   userId: string,
+   params: CreateTransactionParams
+ ): Promise<Transaction | undefined> {
+-  playCashSound(params);
+   const promise = post(`user/${userId}/transaction`, params);
+   const data = await errorHandler<TransactionResponse>(dispatch, {
+     promise,
+@@ -93,8 +93,10 @@ export async function startCreatingTransaction(
+   if (data && data.transaction) {
+     dispatch(userDetailsLoaded(data.transaction.user));
+     dispatch(transactionsLoaded([data.transaction]));
++    playCashSound(params);
+     return data.transaction;
+   }
++  playCashSound(undefined, true);
+   return undefined;
+ }
+ export type StartCreatingTransaction = typeof startCreatingTransaction;
