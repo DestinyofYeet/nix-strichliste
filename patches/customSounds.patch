@@ -1,3 +1,18 @@
+diff --git a/src/components/article/article-scanner.tsx b/src/components/article/article-scanner.tsx
+index cb24cd8..7512c5f 100644
+--- a/src/components/article/article-scanner.tsx
++++ b/src/components/article/article-scanner.tsx
+@@ -28,8 +28,10 @@ export const ArticleScanner = (props: Props) => {
+       setMessage('ARTICLE_FETCHED_BY_BARCODE');
+       setArticle(article);
+       if (article) {
++        console.log(article);
+         startCreatingTransaction(dispatch, props.userId, {
+           articleId: article.id,
++          articleName: article.name,
+         });
+       }
+     } catch (error) {
 diff --git a/src/components/user/views/user-article-transaction.tsx b/src/components/user/views/user-article-transaction.tsx
 index 2298f52..8d23beb 100644
 --- a/src/components/user/views/user-article-transaction.tsx
@@ -11,10 +26,10 @@ index 2298f52..8d23beb 100644
    );
    if (result) {
 diff --git a/src/services/sound.ts b/src/services/sound.ts
-index 146919e..68c4da2 100644
+index 146919e..8f7ca9a 100644
 --- a/src/services/sound.ts
 +++ b/src/services/sound.ts
-@@ -1,11 +1,60 @@
+@@ -1,11 +1,61 @@
  import { Howl } from 'howler';
  import { CreateTransactionParams } from '../store/reducers';
  
@@ -60,6 +75,8 @@ index 146919e..68c4da2 100644
 +    return;
 +  }
 +
++  console.log(_params);
++
 +  if (_params.articleName != null) {
 +    // Artikel gekauft
 +    const articleName = _params.articleName;
@@ -73,7 +90,6 @@ index 146919e..68c4da2 100644
 +    // Geld eingezahlt
 +    const amount = _params.amount;
 +    if (amount > 0){
-+
 +      playSound(getRand(einzahlungsFiles));
 +    } else {
 +      playSound(getRand(auszahlungsFiles));
