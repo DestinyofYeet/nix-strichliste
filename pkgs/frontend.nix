@@ -10,7 +10,7 @@
     then "\"\""
     else builtins.concatStringsSep ", " (map (store: "\"${builtins.baseNameOf store}\"") soundList);
 
-  mkSoundFiles = soundAttrs: builtins.concatStringsSep ", " (lib.flatten (lib.mapAttrsToList (name: value: "[${name}, [${soundsToStrings value.sounds}]]") soundAttrs));
+  mkSoundFiles = soundAttrs: builtins.concatStringsSep ", " (lib.flatten (lib.mapAttrsToList (name: value: "[\"${name}\", [${soundsToStrings value.sounds}]]") soundAttrs));
 
   customSounds = cfg.customSounds;
 
@@ -64,7 +64,7 @@ in
 
     patches = pkgs.lib.optionals cfg.customSounds.enable [
       customSoundPatch
-      ../patches/transactionPlayFix.patch
+      # ../patches/transactionPlayFix.patch
     ];
 
     nativeBuildInputs = with pkgs; [

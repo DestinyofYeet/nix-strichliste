@@ -76,6 +76,7 @@ in {
         withdrawSounds = mkSoundOption "Sounds to be played when a user withdraws money without buying anything";
         baselineSounds = mkSoundOption "Sounds to be played when an item is bought and has noting else set";
         specificSounds = mkOption {
+          default = {};
           type = types.attrsOf (types.submodule {
             options = {
               sounds = mkSoundOption "Sounds to be played for that specific article";
@@ -480,5 +481,9 @@ in {
     };
 
     systemd.services."phpfpm-strichliste".serviceConfig.ExecStartPre = "${pkgs.bash}/bin/bash -c 'rm -fr ${cfg.dataDir}/cache'";
+
+    systemd.services.phpfpm-strichliste.restartTriggers = [
+      config.services.strichliste.package
+    ];
   };
 }

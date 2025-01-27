@@ -1,8 +1,20 @@
+diff --git a/src/components/user/views/user-article-transaction.tsx b/src/components/user/views/user-article-transaction.tsx
+index 2298f52..8d23beb 100644
+--- a/src/components/user/views/user-article-transaction.tsx
++++ b/src/components/user/views/user-article-transaction.tsx
+@@ -16,6 +16,7 @@ async function onSelect(
+     props.match.params.id,
+     {
+       articleId: article.id,
++      articleName: article.name,
+     }
+   );
+   if (result) {
 diff --git a/src/services/sound.ts b/src/services/sound.ts
-index 146919e..d152511 100644
+index 146919e..68c4da2 100644
 --- a/src/services/sound.ts
 +++ b/src/services/sound.ts
-@@ -1,11 +1,61 @@
+@@ -1,11 +1,60 @@
  import { Howl } from 'howler';
  import { CreateTransactionParams } from '../store/reducers';
  
@@ -32,7 +44,7 @@ index 146919e..d152511 100644
 +  return new Howl({ src: [file]});
 +}
 +
-+const soundFiles = new Map<number, Array<string>>([@soundFiles@]);
++const soundFiles = new Map<string, Array<string>>([@soundFiles@]);
  
  // eslint-disable-next-line @typescript-eslint/no-unused-vars
 -export function playCashSound(_params?: CreateTransactionParams): void {
@@ -48,12 +60,10 @@ index 146919e..d152511 100644
 +    return;
 +  }
 +
-+  console.log(_params);
-+
-+  if (_params.articleId != null) {
++  if (_params.articleName != null) {
 +    // Artikel gekauft
-+    const articleId = _params.articleId;
-+    const soundFileArray = soundFiles.get(articleId);
++    const articleName = _params.articleName;
++    const soundFileArray = soundFiles.get(articleName);
 +    if (soundFileArray != null) {
 +      playSound(getRand(soundFileArray));
 +    } else {
@@ -63,10 +73,40 @@ index 146919e..d152511 100644
 +    // Geld eingezahlt
 +    const amount = _params.amount;
 +    if (amount > 0){
++
 +      playSound(getRand(einzahlungsFiles));
 +    } else {
 +      playSound(getRand(auszahlungsFiles));
 +    }
 +  }
  }
-
+diff --git a/src/store/reducers/transaction.ts b/src/store/reducers/transaction.ts
+index c9e3ccb..fb598d5 100644
+--- a/src/store/reducers/transaction.ts
++++ b/src/store/reducers/transaction.ts
+@@ -78,13 +78,13 @@ export interface CreateTransactionParams {
+   articleId?: number;
+   recipientId?: string;
+   comment?: string;
++  articleName?: string;
+ }
+ export async function startCreatingTransaction(
+   dispatch: Dispatch,
+   userId: string,
+   params: CreateTransactionParams
+ ): Promise<Transaction | undefined> {
+-  playCashSound(params);
+   const promise = post(`user/${userId}/transaction`, params);
+   const data = await errorHandler<TransactionResponse>(dispatch, {
+     promise,
+@@ -93,8 +93,10 @@ export async function startCreatingTransaction(
+   if (data && data.transaction) {
+     dispatch(userDetailsLoaded(data.transaction.user));
+     dispatch(transactionsLoaded([data.transaction]));
++    playCashSound(params);
+     return data.transaction;
+   }
++  playCashSound(undefined, true);
+   return undefined;
+ }
+ export type StartCreatingTransaction = typeof startCreatingTransaction;
