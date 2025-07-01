@@ -11,14 +11,12 @@
     DATABASE_URL="${cfg.databaseUrl}"
   '';
 
-  yamlPatch = pkgs.substituteAll {
-    src = ../patches/strichlisteYaml.patch;
+  yamlPatch = pkgs.replaceVars ../patches/strichlisteYaml.patch {
 
     strichliste = cfg.configFile;
   };
 
-  writeableDirsPath = pkgs.substituteAll {
-    src = ../patches/makeDirectoriesWriteable.patch;
+  writeableDirsPath = pkgs.replaceVars ../patches/makeDirectoriesWriteable.patch{
 
     cacheDir = cfg.dataDir + "/cache";
     logDir = cfg.dataDir + "/log";

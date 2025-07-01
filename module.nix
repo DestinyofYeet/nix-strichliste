@@ -10,9 +10,7 @@ with lib; let
 
   cfg = config.services.strichliste;
 
-  env-file = pkgs.substituteAll {
-    src = ./conf/env.env;
-
+  env-file = pkgs.replaceVars ./conf/env.env {
     databaseUrl = cfg.databaseUrl;
   };
 

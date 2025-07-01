@@ -14,8 +14,7 @@
 
   customSounds = cfg.customSounds;
 
-  customSoundPatch = pkgs.substituteAll {
-    src = ../patches/customSounds.patch;
+  customSoundPatch = pkgs.replaceVars ../patches/customSounds.patch{
 
     depositFiles = soundsToStrings customSounds.depositSounds;
     failedFiles = soundsToStrings customSounds.failedSounds;
